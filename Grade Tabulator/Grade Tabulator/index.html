@@ -1,0 +1,238 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <meta charset="utf-8" />
+    <style>
+        #gradetitle {
+            width: 100%;
+            height: 60px;
+            font-size: 1.5em;
+            font-family: 'Lobster', cursive;
+            font-weight: bold;
+            border-radius: 8px;
+            background-color: #E77471;
+            margin-left: 50px;
+            margin-top: 30px;
+        }
+
+        #table {
+            margin-top: 30px;
+            margin-left: 40px;
+        }
+
+        #btn {
+            margin-top: 20px;
+            margin-left: 30px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+
+    <strong id="gradetitle">Grade Table</strong>
+
+
+    <table id="table" border="1">
+        <tr>
+            <td>Student name</td>
+            <td>Attendance</td>
+            <td>Homework</td>
+            <td>Midterm Test</td>
+            <td> Final Exam </td>
+            <td> Final marks </td>
+            <td> Final Grade </td>
+
+        </tr>
+
+
+
+
+
+
+
+
+    </table>
+
+
+    <input type="button" id="btn" value="Highest marks" onclick="highest();" />
+    <input type="button" id="btn" value="Lowest marks" onclick="lowest();" />
+    <input type="button" id="btn" value="Average marks" onclick="avg();" />
+
+    <script>
+        function Student() {
+            this.fullname = "";
+            this.attendance = 0;
+            this.homework = 0;
+            this.midterm = 0;
+            this.finalexam = 0;
+            this.finalmarks = 0;
+
+
+             this.computegrade = function () {
+                if (this.finalmarks >= 80 && this.finalmarks <100) {
+                    this.overallGrade = '<font style="color:green" >' + 'A' + '</font>';
+                } else if (this.finalmarks >= 70 && this.finalmarks < 80) {
+                    this.overallGrade = 'B';
+                } else if (this.finalmarks >= 60 && this.finalmarks < 70) {
+                    this.overallGrade = 'C';
+                } else if (this.finalmarks >= 50 && this.finalmarks < 60) {
+                    this.overallGrade = 'D';
+                } else {
+                    this.overallGrade = '<font style="color:red" >' + 'F' + '</font>';
+
+
+
+                }
+            };
+        }
+
+
+        var student = new Student();
+        var re = /^-?[0-9]+$/;
+        var reA = /^[a-zA-Z]+$/;
+        var total = 0;
+        var maxValue = 0;
+        var minValue = 100;
+        var value = 0;
+
+
+
+
+
+
+
+
+        var table = document.getElementById('table');
+
+
+        var rowCounter = 1;
+
+        do {
+
+            student.fullname = prompt("Enter name");
+            while (reA.test(student.fullname) == false) {
+                alert("Please enter only in alphabets")
+                student.fullname = prompt("Enter name");
+            };
+
+
+
+          student.attendance =prompt("Enter " + student.fullname +"'s attendance score");
+          while (student.attendance > 100 || student.attendance < 0 ||re.test(student.attendance) == false) {
+              alert("Please Enter number from 1 to 100.")
+              student.attendance = prompt("Enter " + student.fullname + "'s attendance score");
+          };
+
+        student.attendance = parseInt(student.attendance);
+
+
+
+            student.homework = prompt("Enter " + student.fullname + "'s homework score");
+            while (student.homework > 100 || student.attendance < 0 || re.test(student.homework) == false) {
+                alert("Please Enter number from 1 to 100.")
+                student.homework = prompt("Enter " + student.fullname + "'s homework score");
+            };
+
+            student.homework = parseInt(student.homework);
+
+
+           student.midterm = prompt("Enter " + student.fullname + "'s midterm score");
+           while (student.midterm > 100 || student.attendance < 0 || re.test(student.midterm) == false) {
+               alert("Please Enter number from 1 to 100.")
+               student.midterm = prompt("Enter " + student.fullname + "'s midterm score");
+           };
+
+           student.midterm = parseInt(student.midterm);
+
+           student.finalexam = prompt("Enter " + student.fullname + "'s finalexam score");
+           while (student.finalexam > 100 || student.attendance < 0 || re.test(student.finalexam) == false) {
+               alert("Please Enter number from 1 to 100.")
+               student.finalexam = prompt("Enter " + student.fullname + "'s finalexam score");
+           };
+
+           student.finalexam = parseInt(student.finalexam);
+
+
+
+           student.finalmarks = parseInt((student.attendance * 0.1) + (student.homework * 0.2) + (student.midterm * 0.3)
+                + (student.finalexam * 0.4));
+
+
+
+           student.computegrade();
+
+            //asking table element represented by the table variable to
+            //add a new row at a specific position. At the same time, I am asking
+            //the newRow variable to represent the newly created row.
+
+           var newRow = table.insertRow(rowCounter);
+
+            var fullnameCell = newRow.insertCell(0);
+            fullnameCell.innerHTML = student.fullname;
+
+            var attendanceCell = newRow.insertCell(1);
+            attendanceCell.innerHTML = student.attendance;
+
+            var homeworkCell = newRow.insertCell(2);
+            homeworkCell.innerHTML = student.homework;
+
+            var midtermCell = newRow.insertCell(3);
+            midtermCell.innerHTML = student.midterm;
+
+            var finalexamCell = newRow.insertCell(4);
+            finalexamCell.innerHTML = student.finalexam;
+
+            var finalmarksCell = newRow.insertCell(5);
+            finalmarksCell.innerHTML = student.finalmarks;
+
+            var computegradeCell = newRow.insertCell(6);
+            computegradeCell.innerHTML = student.overallGrade;
+
+
+            rowCounter = rowCounter + 1;
+
+
+
+            total += student.finalmarks;
+
+
+            if (student.finalmarks > maxValue) {
+                maxValue = student.finalmarks;
+
+            }
+
+            if (student.finalmarks < minValue) {
+                minValue = student.finalmarks;
+            }
+
+            var response = confirm("Continue again ?");
+
+        } while (response == true)
+
+
+        function avg() {
+            alert( "The average score is " + total / (rowCounter-1));
+
+        }
+
+        function highest() {
+
+            alert("The highest score is " + maxValue);
+        }
+
+        function lowest() {
+
+            alert(" The Lowest score is " + minValue);
+        }
+
+    </script>
+
+    <div id="displaybox">
+
+    </div>
+
+
+</body>
+</html>

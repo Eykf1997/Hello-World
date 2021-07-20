@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="css/jquery.mobile-1.4.5.css" rel="stylesheet" />
+    <script src="scripts/jquery.min.js"></script>
+    <script src="scripts/jquery.mobile-1.4.5.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/3.2.1/firebase.js"></script>
+    <script src="http://maps.googleapis.com/maps/api/js?sensor=true">
+    </script>
+    <link href="css/jw-jqm-cal.css" rel="stylesheet" />
+    <script src="scripts/jw-jqm-cal.js"></script>
+
+    
+
+
+
+
+
+    <style>
+        #map,#maps,#maps1 {
+            width: 300px;
+            height: 500px;
+        }
+
+
+    </style>
+
+
+
+</head>
+<body>
+    
+
+    <script>
+        $(document).on("pageinit", "#view-calendar", function () {
+            $("#calendar").jqmCalendar({
+                events: [{ "summary": "Test event", "begin": new Date(2015, 09, 05, 10, 30), "end": new Date(2015, 09, 05, 12, 30) }, { "summary": "Test event", "begin": new Date(), "end": new Date() }, { "summary": "Test event", "begin": new Date(), "end": new Date() }],
+                months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+                days: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+                startOfWeek: 0
+            });
+        })
+        x = navigator.geolocation;
+        x.getCurrentPosition(success, failure);
+
+        function success(position) {
+            var mylat = position.coords.latitude;
+            var mylong = position.coords.longitude;
+            var coords = new google.maps.LatLng(mylat, mylong);
+            var mapOptions = {
+
+                zoom: 16,
+                center: coords,
+                mapTypeId: google.maps.MapTypeId.ROADMAP
+
+
+            }
+            var map = new google.maps.Map(document.getElementById("maps"), mapOptions);
+            var marker = new google.maps.Marker({ map: map, position: coords });
+        }
+
+        function failure(position) {
+            document.getElementById("#location").innerHTML("Failed to get coordinates")
+
+        }
+
+        //Store the username of the currently logged user.
+        var user = null;
+        // Initialize Firebase
+        var config = {
+            apiKey: "AIzaSyBaHMQpIafpzQXe-jTZuaI_jCh-eThUcZY",
+            authDomain: "mad2-77466.firebaseapp.com",
+            databaseURL: "https://mad2-77466.firebaseio.com",
+            storageBucket: "mad2-77466.appspot.com",
+        };
+        firebase.initializeApp(config);
+
+        var user = firebase.auth().currentUser;
+
+
+        /**
+        Make sure that the document and all of it's components are successfuly loaded before making any reference.
+        */
+        $(document).ready(function () {
+
+
+
+            /**
+            Click event hander for the delete button of a split button. Deletes an item
+            from a list content that displays a location based on the city name and country code.
+            */
+            $(document).on("click", "a[name=delete]", function () {
+                removeFromCollection($(this).attr('id'));
+                $(this).parent().remove();
+            });
+
+            /**
+            Click event hander for a split button. Displays the weather information of a location
+            based on the city ID.
+            */
+            $(document).on("click", "a[name=display]", function () {
+                showWeatherById($(this).attr('id'));
+               
+            });
+
+            /**
+            Click event handler for the button to login existing users.
+            */
+            $('#btnlogin').click(function () {
+                login($('#eusername').val(), $('#epassword').val());
+            })
+
+            /**
+            Click event handler for the button that registers a new user account.
+            */
+            $('#btnregisteruser').click(function () {
+                registerUser($('#newusername').val(), $('#newpassword').val());
+            });
+
+
+            $('#btnprofile').click(function () {
+                userProfileInformation($('#userName').val(), $('#contact').val());
+            });
+
+            $('#btnHotelInfo').click(function () {
+                hotelReservation($('#fname').val(), $('#mnumber').val(), $('#nroom').val());
+            });
+            
+            /**
+            Click event handler for the logout button in the weather page.
+            */
+            $('#logoutbtn').click(function () {
+                logout();
+            });
+
+
+         
+        });
+
+        /**
+        Displays an alert message on a page.
+        @param {string} alert - The message to be displayed.
+        */
+        function showMessage(alert) {
+            $("#alertmessage").html(alert);
+            $(".ui-dialog").dialog("close");
+            $.mobile.changePage("#alert", "pop");
+        }
+
+
+
+
+
+
+
+
+        /**
+        Clear the weather page.
+        */
+        function clearPage() {
+            $('#forecastlist').empty();
+        }
+
+
+
+
+
+
+        /**
+        Checks that all the information needed to register a new user is entered.
+        */
+        function registerUser(username, password) {
+            if (navigator.onLine) {
+                //Reference to the Firebase database.
+                if ($('#newusername').val() && $('#newpassword').val() && $('#confirmpassword').val()) {
+                    if ($('#newpassword').val() == $('#confirmpassword').val()) {
+                        createAccount(username, password);
+                    }
+                    else {
+                        showMessage("Passwords does not match. Please try again.");
+                    }
+                }
+                else {
+                    showMessage("All fields are required. Please try again.");
+                }
+            }
+            else {
+                showMessage("Please check your internet connection.");
+            }
+        }
+
+        /**
+        Checks that all the information needed to authenticate a user is entered.
+        @param {string} username - The username to be validated.
+        @param {string} password - The password to be validated.
+        */
+        function login(username, password) {
+            if (username && password) {
+                validateUser(username, password);
+            }
+            else {
+                showMessage("All fields are required to login. Please try again.");
+            }
+        }
+
+        /**
+        Checks the firebase database if username already exists. An account will only be created if
+        the username is not already in the database.
+        @param {string} username - The username for the new account.
+        @param {string} password - The password for the new account.
+        */
+        function createAccount(username, password) {
+            //referred to the online example given by the Firebase via GitHub
+            firebase.auth().createUserWithEmailAndPassword(username, password).catch(function (error) {
+                var errorCode = error.code;
+                var errorMessage = error.message;
+                // [START_EXCLUDE]
+                if (errorCode == 'auth/weak-password') {
+                    showMessage('The password is too weak.');
+                } else {
+                    showMessage(errorMessage);
+                }
+                // [END_EXCLUDE]
+            });
+        }//end of createAccount()
+
+
+
+        /*** added this for Firebase 3 ****/
+        firebase.auth().onAuthStateChanged(function (inUser) {
+            if (inUser !== null) {
+                user = inUser; //this user object has email and uid property. You can use console.dir to check
+                console.log('logged in!');
+                initUser(user);
+                
+                $(":mobile-pagecontainer").pagecontainer("change", "#Homepage");
+
+                //The following logic works for other scenarios. The event handler
+                //triggers x number of times of there are x location objects in the array.
+                //I just need to grab the whole array therefore, I dont need the code below.
+                /*
+                userLocationRef.on('child_added', function(data) {
+                        console.dir(data.val());
+                        updateLocationList();
+                        $("#locationlist").listview('refresh');
+                });
+                */
+            }
+        });
+
+
+
+
+        function userProfileInformation(currentUser) {
+            var userProfileRef = firebase.database().ref('/Profile/' + firebase.auth().currentUser.uid);
+            var userName = $("#userName").val();
+            var contact = $("#contact").val();
+
+            if ($("#userName").val()&& $("#contact").val() !== null) {
+                userProfileRef.push({
+                    userName: userName,
+                    contact: contact
+                });
+                $(":mobile-pagecontainer").pagecontainer("change", "#Homepage")
+            } else {
+                showMessage("Please enter ur informations")
+            }
+        }
+  
+
+
+
+
+
+        function hotelReservation(currentUser) {
+            var hotelReservationRef = firebase.database().ref('/Reservation Information/' + firebase.auth().currentUser.uid);
+
+            var  fname= $("#fname").val();
+            var mnumber = $("#mnumber").val();
+            var  nroom= $("#nroom").val();
+            
+            
+            if ($("#fname").val() && $("#mnumber").val() && $("#nroom").val() !== null) {
+                hotelReservationRef.push({
+                    fname: fname,
+                    mnumber: mnumber,
+                    nroom: nroom
+                });
+                $(":mobile-pagecontainer").pagecontainer("change", "#Homepage")
+            } else {
+                showMessage("Please enter ur informations")
+            }
+        }
+
+
+       /*
+        $(document).on("pageshow", "#showData", function (event) {
+            var userId = firebase.auth().currentUser.uid;
+            firebase.database().ref('info/' + userId).on('value', function (snapshot) {
+
+                var name = snapshot.val().FirstName;
+                var bname = snapshot.val().BandName;
+                var brole = snapshot.val().Role;
+                document.getElementById("showProfileName").innerHTML = (name);
+                document.getElementById("showProfileBandName").innerHTML = (bname);
+                document.getElementById("showProfileRole").innerHTML = (brole);
+            });
+        })
+        */
+        /**
+       Checks the firebase database if email already exists and whether the password matches the one
+       entered by the user.
+       @param {string} username - The username used by the user to log in.
+       @param {string} password - The password to validate against the user's password in the firebase database.
+       */
+        function validateUser(username, password) {
+            firebase.auth().signInWithEmailAndPassword(username, password).catch(function (error) {
+                // Handle Errors here.
+                $(":mobile-pagecontainer").pagecontainer("change", "#Homepage");
+                var errorCode = error.code;
+                var errorMessage = error.message;
+                // [START_EXCLUDE]
+                if (errorCode === 'auth/wrong-password') {
+                    showMessage('Wrong password.');
+                } else {
+                    showMessage(errorMessage);
+                }
+
+                // [END_EXCLUDE]
+            });
+            // [END authwithemail]
+
+        }//end of validate user
+
+        function initUser(username) {
+            //user = username;
+            clearPage();
+            $.mobile.changePage("#Homepage");
+            $("#countrycode").text(user.email + "!");
+
+
+            $("#login").toggle(false);
+            $("#logout").toggle(true);
+        }
+
+
+        /**
+        Clears the location array and the currently logged user.
+        */
+        function logout() {
+            firebase.auth().signOut().then(function () {
+                user = "";
+                $(":mobile-pagecontainer").pagecontainer("change", "#pageone");
+                console.log('Logged Out');
+                // Sign-out successful.
+            }, function (error) {
+                // An error happened.
+            });
+        }
+
+        var lat;
+        var lon;
+        navigator.geolocation.getCurrentPosition(function (position) {
+            lat = position.coords.latitude;
+            lon = position.coords.longitude;
+
+     
+        }
+
+        );
+
+        var map,
+            currentPosition,
+            directionsDisplay,
+            directionsService;
+        $(document).on('pageinit', '#interest', function () {
+
+            var data = [];
+            var chosenIndex = 0;
+
+            var s = ""
+
+            $.getJSON("http://sp.api.40tasks.com:80/v1/explore/", { lat: lat, lng: lon },
+            function (result) {
+                // console.log('result');
+                $.each(result, function (i, element) {
+                    s = s + "<li><a href='#'>" + element.name + "</a></li>";
+                    var obj = {
+                        name: element.name,
+                        id: element.id,
+                        lat: element.lat,
+                        lng: element.lng
+                    };
+                    data.push(obj);
+                });
+
+                $('#mydata').html(s);
+                $('#mydata').listview('refresh');
+            });
+
+
+            $("#mydata").on("click", 'li', function (eventObject) {
+
+                chosenIndex = $(this).index();
+
+                $(":mobile-pagecontainer").pagecontainer("change", "#interest2", { role: "page" });
+
+            });
+
+
+
+            $(document).on('pageshow', '#interest2', function () {
+
+                //alert('chosen index is' + chosenIndex);
+                var lat = data[chosenIndex].lat;
+                var lng = data[chosenIndex].lng;
+                var id = data[chosenIndex].id;
+                showMap(lat, lng);
+                $.getJSON("http://sp.api.40tasks.com:80/v1/venue/" + id + "?lat=" + lat + "&lng=" + lng,
+                     function (result) {
+
+                         //alert('result' + lat);
+                         $('#thetitle').html(result.name);
+                         $('#address').html(result.location.address);
+                         $('#phone2').html('<p>Phone: ' + result.contact.phone + '<p>Ratings: ' + result.ratings.value);
+                         $('#facebook').html("<a href='http://www.facebook.com/" + result.contact.fb + "'  target='blank'>Facebook Page</a>");
+                     });
+
+
+
+            });		//end page show
+
+
+        }); //end paginit
+
+
+
+        function showMap(lat, lng) {
+
+            var latlong = new google.maps.LatLng(lat, lng);
+            var mapProp = { center: latlong, zoom: 18, mapTypeId: google.maps.MapTypeId.ROADMAP };
+            var map = new google.maps.Map(document.getElementById("maps1"), mapProp);
+            var markerOne = new google.maps.Marker({
+                position: latlong,
+                map: map
+            });
+
+        }
+        $(document).ready(function () {
+            $("#locatingInformation").click(function () {
+                $.getJSON("http://sp.api.40tasks.com:80/v1/directions/transit?from=103.7862237%2C1.2969484&to=103.70662878376649%2C1.3398552573028397",
+                    function (result) {
+
+                        console.dir(result['ways'][0]['instructions']);
+
+                        //alert('result' + lat);
+                        $('#totaltime').html(result.overview.total_time);
+                        $('#startinglocationname').html(result.overview.start.name);
+                        $('#endlocationname').html(result.overview.end.name);
+
+
+
+
+
+                        $('#instructionsno').html(result['ways'][0]['instructions'][0]['step']);
+
+
+
+                        $('#instructionstitle').html(result['ways'][0]['instructions'][0]['title']);
+
+
+                        $('#instructionsdescription').html(result['ways'][0]['instructions'][0]['description']);
+
+
+
+
+
+                        $('#instructionsno1').html(result['ways'][0]['instructions'][1]['step']);
+
+
+
+                        $('#instructionstitle1').html(result['ways'][0]['instructions'][1]['title']);
+
+
+                        $('#instructionsdescription1').html(result['ways'][0]['instructions'][1]['description']);
+
+
+                        $('#instructionsno2').html(result['ways'][0]['instructions'][2]['step']);
+
+
+
+                        $('#instructionstitle2').html(result['ways'][0]['instructions'][2]['title']);
+
+
+                        $('#instructionsdescription2').html(result['ways'][0]['instructions'][2]['description']);
+
+
+
+
+
+                        $('#instructionsno3').html(result['ways'][0]['instructions'][3]['step']);
+
+
+
+                        $('#instructionstitle3').html(result['ways'][0]['instructions'][3]['title']);
+
+
+                        $('#instructionsdescription3').html(result['ways'][0]['instructions'][3]['description']);
+
+
+
+
+
+                    });
+            });
+        });
+
+
+    </script> <!--firebaseApi-->
+
+
+
+
+    <div data-role="page" id="pageone"data-theme="a" style="background-color:DarkTurquoise;" >
+        <div data-role="main" class="ui-content">
+
+            <div data-role="header" data-position="fixed" style="background-color:azure;">
+                <h1>Traveler</h1>
+
+                
+                
+            </div>
+            </br>
+            <div data-role="main" class="firstpage-icon">
+                <center>  <img src="images/tourist1600.png" height="150" width="150" /></center> 
+                <br />
+            </div>
+            <br />
+            <br />
+            <br />
+            <br />
+            <br />
+            <br />
+            <div data-role="main" class="firstpage-button">
+                <a href="#login" class="ui-btn" data-transition="slidedown">Login</a>
+                <a href="#signUp" class="ui-btn" data-transition="slidedown">Create an account</a>
+            </div>
+
+        </div>
+    </div>
+
+    <div data-role="page" id="login"data-theme="a"style="background-color:DarkTurquoise;">
+        <div data-role="main" class="ui-content">
+            <div data-role="header" data-position="fixed"style="background-color:azure;">
+                <a href="#pageone" class="ui-btn ui-corner-all ui-icon-back ui-btn-icon-notext"></a>
+                <h1>Traveler</h1>
+            </div>
+            <br />
+            <div data-role="content">
+                <p>
+                    Email
+                    <input id="eusername" type="text" />
+                    Password
+                    <input id="epassword" type="password" />
+                    <button id="btnlogin" type="submit">Login</button>
+                    
+                </p>
+                
+            </div>
+        </div>
+    </div>
+
+    <div data-role="page" id="alert"data-theme="a"style="background-color:DarkTurquoise;">
+        <div data-role="header" data-position="fixed"style="background-color:azure;">         
+
+                <h3>
+                    Alert
+                </h3>
+
+        </div>
+        <div data-role="content">
+            <div id="alertmessage"></div>
+        </div>
+        <div data-role="footer" data-position="fixed">
+            <a data-rel="back" data-icon="back" data-role="button">OK</a>
+        </div>
+    </div>
+
+    <div data-role="page" id="signUp" data-theme="a"style="background-color:DarkTurquoise;">
+        <div data-role="main" class="ui-content">
+            <div data-role="header" data-position="fixed"style="background-color:azure;">
+                <h1>Traveler</h1>
+            </div>
+            <br />
+            <div data-role="content">
+                
+                Choose a email
+                <input id="newusername" type="text">
+                Enter your password
+                <input id="newpassword" type="password">
+                Confirm your password
+                <input id="confirmpassword" type="password"><br />
+                <button id="btnregisteruser" class="ui-btn">Submit</button>
+                <a id="btncancelregisteruser" href="#pageone" class="ui-btn">Cancel</a>
+            </div>
+
+        </div>
+    </div>
+
+    <div data-role="page" id="Homepage" data-theme="a"style="background-color:DarkTurquoise;">
+        
+        <div data-role="header" data-position="fixed"style="background-color:azure;">
+            <h1>Homepage</h1>
+            
+        </div>
+
+        <div data-role="main" class="ui-content">
+            <div>
+                <h1>
+
+                    <span id="countrycode" style="font-size: 70%;"></span>
+
+                </h1>
+            </div>
+            <div class="ui-grid-a">
+                <div class="ui-block-a">
+                    <div class="ui-bar ui-bar-a">
+                        <div class="menu-elem"><a href="#hotel" class="ui-btn" data-transition="slide">
+                            <div class="menu-img"><img src="images/hotel-building_318-54595.jpg" height="50" width="50"></div>
+                            <div class="menu-text">Hotel</div>
+
+                        </a></div>
+                    </div>
+                </div>
+                <div class="ui-block-b">
+                    <div class="ui-bar ui-bar-a">
+                        <div class="menu-elem">    <a href="#interest" class="ui-btn" data-transition="fade">
+                            <div class="menu-img"><img src="images/ic_search_48px-128.png" height="50" width="50" /></div>
+                          <div class="menu-text">Interests</div>
+                            </a></div>
+                    </div>
+                </div>
+                <div class="ui-block-a">
+                <div class="ui-bar ui-bar-a">
+                    <div class="menu-elem"><a href="#map_page" class="ui-btn" data-transition="flow">
+                        <div class="menu-img"><img src="images/14382-200.png" height="50" width="50" /></div>
+                                               <div class="menu-text">Route Planner</div>
+                        </a></div>
+                    </div></div>
+                <div class="ui-block-b">
+                    <div class="ui-bar ui-bar-a">
+                        <div class="menu-elem"><a href="#view-calendar" class="ui-btn" data-transition="pop">
+                           <div class="menu-img"><img src="images/404-200.png" height="50" width="50"/></div>          
+                                                   <div class-menu-text>Event Planner</div>
+
+
+                    </a> </div>
+
+                        
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+        
+
+        <div data-role="footer" data-position="fixed">
+            <div data-role="navbar">
+                <ul>
+
+                    <li><a href="#currentLocation" id="maponly" data-icon="location" data-transition="fade"></a></li>
+                    <li><a href="#Homepage" data-icon="home" data-transition="fade"></a></li>
+                    <li><a href="#profile" data-icon="user" data-transition="fade"></a></li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <div data-role="page" id="hotel" data-theme="a"style="background-color:DarkTurquoise;">
+        
+        <div data-role="header"style="background-color:azure;">
+            <h1>Reserve Nearby Hotel</h1>
+            <a href="#Homepage" class="ui-btn ui-corner-all ui-icon-home ui-btn-icon-notext"></a>
+            <div data-role="navbar">
+                <ul>
+                    <li><a href="#hotel">Find Nearest Hotel</a></li>
+                    <li><a href="#hotellist" id="hotellistbutton">List Of Hotels</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div data-role="main" class="ui-content">
+
+            <p>Check-in: <input type="text" id="datepicker"></p>
+            <p>Check-out: <input type="text" id="datepicker1"></p>
+            <form method="post" action="demoform.asp">
+                <label for="fname">Full name</label>
+                <input type="text" name="fname" id="fname" placeholder="Full name...">
+                <label for="mnumber">Mobile Number</label>
+                <input type="tel" name="mnumber" id="mnumber" placeholder="Mobile Number...">
+                <label for="nroom">Number of rooms:</label>
+                <input type="number" name="nroom" id="nroom" placeholder="Number of room...">
+            </form>
+            <button id="btnHotelInfo" class="ui-btn">Find and Reserve a Hotel Near You!</button>
+        </div>
+
+        <div data-role="footer" data-position="fixed">
+            <div data-role="navbar">
+                <ul>
+
+                    <li><a href="#currentLocation" id="maponly" data-icon="location" data-transition="fade"></a></li>
+                    <li><a href="#Homepage" data-icon="home" data-transition="fade"></a></li>
+                    <li><a href="#profile" data-icon="user" data-transition="fade"></a></li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <div data-role="page" id="hotelmaps" data-theme="a"style="background-color:DarkTurquoise;">
+        
+        <div data-role="header"style="background-color:azure;">
+            <h1>Hotel Maps</h1>
+            <a href="#Homepage" class="ui-btn ui-corner-all ui-icon-home ui-btn-icon-notext"></a>
+        </div>
+
+        <div data-role="main" class="ui-content">
+            <div id="map"></div>
+            <div id="location"></div>
+
+
+        </div>
+
+        <div data-role="footer" data-position="fixed">
+            <div data-role="navbar">
+                <ul>
+
+                    <li><a href="#currentLocation" id="maponly" data-icon="location" data-transition="fade"></a></li>
+                    <li><a href="#Homepage" data-icon="home" data-transition="fade"></a></li>
+                    <li><a href="#profile" data-icon="user" data-transition="fade"></a></li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <div data-role="page" id="hotellist" data-theme="a"style="background-color:DarkTurquoise;">
+        
+        <div data-role="header"style="background-color:azure;">
+            <a href="#Homepage" class="ui-btn ui-corner-all ui-icon-home ui-btn-icon-notext"></a>
+            <h1>List of Hotel</h1>
+            <div data-role="navbar">
+                <ul>
+                    <li><a href="#hotel">Find Nearest Hotel</a></li>
+                    <li><a href="#hotellist">List Of Hotels</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div data-role="main" class="ui-content">
+            <ul data-role="listview" data-inset="true">
+                <li data-role="list-divider">Bukit Timah</li>
+                <li>
+                    <a href="#">
+
+
+                        <img src="images/download.jpg" />
+                        <h1>Garden Hotel</h1>
+                        <p>
+                            Address:
+                            14 Balmoral Road
+                            Singapore 259800
+                        </p>
+                    </a>
+                </li>
+
+                <li data-role="list-divider">Chinatown</li>
+                <li>
+                    <a href="#">
+
+
+                        <img src="images/250px-Damenlou_Hotel,_Jan_06.JPG" />
+                        <h1>Damenlou Hotel</h1>
+                        <p>
+                            Address:
+                            14 Balmoral Road
+                            Singapore 259800
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a href="#">
+
+
+                        <img src="images/220px-New_Majestic_Hotel.JPG" />
+                        <h1>New Majestic Hotel</h1>
+                        <p>
+                            Address:
+                            14 Balmoral Road
+                            Singapore 259800
+                        </p>
+                    </a>
+                </li>
+                <li data-role="list-divider">Downtown</li>
+                <li>
+                    <a href="#">
+
+
+                        <img src="images/250px-Alexandria_Hotel_(Los_Angeles).jpg" />
+                        <h1>Alexandria Hotel</h1>
+                        <p>
+                            Address:
+                            14 Balmoral Road
+                            Singapore 259800
+                        </p>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div data-role="footer" data-position="fixed">
+            <div data-role="navbar">
+                <ul>
+
+                    <li><a href="#currentLocation" id="maponly" data-icon="location" data-transition="fade"></a></li>
+                    <li><a href="#Homepage" data-icon="home" data-transition="fade"></a></li>
+                    <li><a href="#profile" data-icon="user" data-transition="fade"></a></li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <div data-role="page" id="interest" data-theme="a"style="background-color:DarkTurquoise;">
+        
+        <div data-role="header"style="background-color:azure;">
+            <h1>List of interests</h1>
+
+            <a href="#Homepage" class="ui-btn ui-corner-all ui-icon-home ui-btn-icon-notext"></a>        </div>
+
+        <div data-role="main" class="ui-content">
+            <div id='mydiv'></div>
+
+            <ul id='mydata' data-role='listview'></ul>
+
+        </div>
+
+        <div data-role="footer" data-position="fixed">
+            <div data-role="navbar">
+                <ul>
+
+                    <li><a href="#currentLocation" id="maponly" data-icon="location" data-transition="fade"></a></li>
+                    <li><a href="#Homepage" data-icon="home" data-transition="fade"></a></li>
+                    <li><a href="#profile" data-icon="user" data-transition="fade"></a></li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <div data-role="page" id="interest2" data-theme="a"style="background-color:DarkTurquoise;">
+        <div data-role="header"style="background-color:azure;">
+            <a href='#interest'>Back</a>
+            <h1 id="thetitle"></h1>
+        </div>
+        <div data-role="main" class="ui-content">
+            <div id="address"></div>
+            <p></p>
+            <div id="facebook"></div>
+            <p>
+                <div id="phone2"></div>
+
+                <div id="maps1"></div>
+        </div>
+        <div data-role="footer" data-position='fixed'>
+            <div data-role="navbar">
+                <ul>
+
+                    <li><a href="#currentLocation" id="maponly" data-icon="location" data-transition="fade"></a></li>
+                    <li><a href="#Homepage" data-icon="home" data-transition="fade"></a></li>
+                    <li><a href="#profile" data-icon="user" data-transition="fade"></a></li>
+                </ul>
+            </div>
+        </div>
+
+
+    </div>
+
+    <div  data-role="page" id="map_page" data-theme="a"style="background-color:DarkTurquoise;">
+        
+        <div data-role="header"style="background-color:azure;">
+            <h1>Route Planner</h1>
+            <a href="#Homepage" class="ui-btn ui-corner-all ui-icon-home ui-btn-icon-notext"></a>
+        </div>
+        <div data-role="content">
+            <label for="startingLocation">From </label>
+            <input type="text" name="startingLocation" id="startingLocation">
+            <label for="endingLocation">To </label>
+            <input type="text" name="endingLocation" id="ending Location">
+            <a href="#locationInformation" class="ui-btn" id="locatingInformation">Find a route</a>
+        </div>
+        
+        <div data-role="footer" data-position="fixed">
+            <div data-role="navbar">
+                <ul>
+
+                    <li><a href="#currentLocation" id="maponly" data-icon="location" data-transition="fade"></a></li>
+                    <li><a href="#Homepage" data-icon="home" data-transition="fade"></a></li>
+                    <li><a href="#profile" data-icon="user" data-transition="fade"></a></li>
+                </ul>
+            </div>
+        </div>
+        </div>
+    
+    <div data-role="page" id="locationInformation" data-theme="a"style="background-color:DarkTurquoise;">
+
+        <div data-role="header"style="background-color:azure;">
+            <h1>Locating Information</h1>
+            <a href="#Homepage" class="ui-btn ui-corner-all ui-icon-home ui-btn-icon-notext"></a>
+        </div>
+
+        <div data-role="main" class="ui-content">
+            <div id="totaltime"></div>
+            <div id="startinglocationname"></div>
+            <div id="endlocationname"></div>
+            <div id="instructionsno"></div>
+            <div id="instructionstitle"></div>
+            <div id="instructionsdescription"></div>
+            <div id="endstop"></div>
+            <div id="instructionsno1"></div>
+            <div id="instructionstitle1"></div>
+            <div id="instructionsdescription1"></div>
+            <div id="instructionsno2"></div>
+            <div id="instructionstitle2"></div>
+            <div id="instructionsdescription2"></div>
+            <div id="instructionsno3"></div>
+            <div id="instructionstitle3"></div>
+            <div id="instructionsdescription3"></div>
+
+        </div>
+
+        <div data-role="footer" data-position="fixed">
+            <div data-role="navbar">
+                <ul>
+
+                    <li><a href="#currentLocation" id="maponly" data-icon="location" data-transition="fade"></a></li>
+                    <li><a href="#Homepage" data-icon="home" data-transition="fade"></a></li>
+                    <li><a href="#profile" data-icon="user" data-transition="fade"></a></li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <div data-role="page" id="view-calendar" data-theme="a"style="background-color:DarkTurquoise;">
+
+        <div data-role="header"style="background-color:azure;">
+            <h1>Event Calendar</h1>
+            <a href="#Homepage" class="ui-btn ui-corner-all ui-icon-home ui-btn-icon-notext"></a>
+        </div>
+
+        <div data-role="main" class="ui-content">
+            <div id="calendar"></div>
+        </div>
+
+        <div data-role="footer"data-position="fixed">
+            <div data-role="navbar">
+                <ul>
+
+                    <li><a href="#currentLocation" id="maponly" data-icon="location" data-transition="fade"></a></li>
+                    <li><a href="#Homepage" data-icon="home" data-transition="fade"></a></li>
+                    <li><a href="#profile" data-icon="user" data-transition="fade"></a></li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <div data-role="page" id="profile" data-theme="a"style="background-color:DarkTurquoise;">
+
+        <div data-role="main" class="ui-content">
+        <div data-role="header"style="background-color:azure;">
+            <a href="#Homepage" class="ui-btn ui-corner-all ui-icon-back ui-btn-icon-notext "></a>
+            <center><p style="border:1px solid black;height:200px;width:200px;">Profile</p></center>
+
+        </div>
+    </div>
+
+
+
+
+
+        <button id="logoutbtn" type="submit">Log out</button>
+        <div data-role="navbar">
+            <ul>
+                <li><a href="#information" class="ui-btn" data-transition="fade"><h1>information</h1></a></li>
+                
+            </ul>
+        </div>
+
+        <div data-role="footer" data-position="fixed">
+            <div data-role="navbar">
+                <ul>
+
+                    <li><a href="#currentLocation" id="maponly" data-icon="location" data-transition="fade"></a></li>
+                    <li><a href="#Homepage" data-icon="home" data-transition="fade"></a></li>
+                    <li><a href="#profile" data-icon="user" data-transition="fade"></a></li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+
+
+
+    <div data-role="page" id="information"data-theme="a"style="background-color:DarkTurquoise;">
+        
+            <div data-role="header"style="background-color:azure;">
+                <h1>Details</h1>
+                <a href="#Homepage" class="ui-btn ui-corner-all ui-icon-home ui-btn-icon-notext"></a>
+            </div>
+            <br />
+
+            <form method="post" action="demoform.asp">
+                <label for="userName">User Name:</label>
+                <input type="text" name="ID" id="userName">                
+                
+                <label for="contact">Contact:</label>
+                <input type="tel" name="contact" id="contact"/>
+               
+            </form>
+            <div data-role="navbar">
+                <button id="btnprofile" class="ui-btn">Submit</button>
+                <a id="btncancelprofile" href="#profile" class="ui-btn">Back</a>
+                
+            </div>
+        
+    </div>
+
+    <div data-role="page" id="currentLocation" data-theme="a"style="background-color:DarkTurquoise;">
+
+        <div data-role="main" class="ui-content">
+            <div data-role="header"style="background-color:azure;">
+                <a href="#Homepage" class="ui-btn ui-corner-all ui-icon-back ui-btn-icon-notext "></a>
+                <h1>Current Location</h1>
+
+            </div>
+        </div>
+
+
+
+
+
+        <div id="maps"></div>
+        <div id="location"></div>
+        <div data-role="footer" data-position="fixed">
+            <div data-role="navbar">
+                <ul>
+
+                    <li><a href="#currentLocation" id="maponly" data-icon="location" data-transition="fade"></a></li>
+                    <li><a href="#Homepage" data-icon="home" data-transition="fade"></a></li>
+                    <li><a href="#profile" data-icon="user" data-transition="fade"></a></li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+    
+</body>
+</html>
+
+

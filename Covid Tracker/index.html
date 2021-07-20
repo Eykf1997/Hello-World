@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.js"></script>
+
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.1.1/mapbox-gl.js'></script>
+
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.1.1/mapbox-gl.css' rel='stylesheet' />
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"
+    type="text/javascript" charset="utf-8"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"
+    type="text/javascript" charset="utf-8"></script>
+    <link rel="stylesheet" type="text/css" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
+
+    <script type="text/javascript" src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
+    <script type="text/javascript" src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
+    <script type="text/javascript" src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
+    <script type="text/javascript" src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
+<style>
+*{
+    margin: 0;
+    padding: 0;
+    outline: 0;
+    font-family: 'Nunito',sans-serif;
+    overflow: auto;
+}
+body{
+    background-color: grey;
+}
+.wrapper{
+    width: 80%;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.statistic{
+    width: 100%;
+}
+
+.total_case_box{
+    
+    background-color: #fafafa;
+    box-shadow: 2px 2px 8px rgba(30,30,30,.2);
+    margin: 10px 15px;
+    padding: 15px 0;
+    text-align: center;
+    text-transform: uppercase;
+}
+.total_case_box p{
+    font-size: 2rem;
+}
+.wrapper .box_wrapper{
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+}
+
+.box_wrapper .box{
+    background-color: #fafafa;
+    box-shadow: 2px 2px 8px rgba(30,30,30,.2);
+    margin: 10px 15px;
+    width:25%;
+    text-align: center;
+    padding: 15px 0;
+    border-radius: 8px;
+    text-transform: uppercase;
+}
+.box_wrapper .box p{
+    font-size: 1.5rem;
+}
+
+
+/*Styiling the table*/
+table{
+    width: 100%;
+    padding: 15px 10px;
+    margin: 10px 0;
+    text-align: center;
+    border-spacing: 0;
+}
+tr:first-child{
+    background-color: #37474f;
+    color: #fafafa;
+    text-transform: uppercase;
+}
+th{
+    padding: 15px 0;
+    border: none;
+    border-spacing: 0;
+    
+}
+tr:nth-child(even){
+    background-color: #fafafa;
+    
+    
+}
+tr:nth-child(odd){
+    background-color: #424242;
+    color: #fafafa;
+}
+tr td{
+    padding: 15px 0;
+    
+    
+}
+
+
+
+.pagenumbers {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	align-items: center;
+}
+
+.pagenumbers button {
+	width: 50px;
+	height: 50px;
+
+	appearance: none;
+	border: none;
+	outline: none;
+	cursor: pointer;
+
+	background-color: grey;
+
+	margin: 5px;
+	transition: 0.4s;
+
+	color: #FFF;
+	font-size: 18px;
+	text-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+	box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+}
+
+.pagenumbers button:hover {
+	background-color: #DCDCDC;
+}
+
+.pagenumbers button.active {
+	background-color: #DCDCDC;
+}
+    
+
+
+</style>
+</head>
+<body>
+
+    <div class="wrapper">
+        <div class="statistic">
+
+            <div class="total_case_box">
+                <h2>Total Cases</h2>
+                <p id="total_cases"></p>
+            </div>
+           <div class="box_wrapper">
+                <div class="box">
+                    <h2>Total Death</h2>
+                    <p id="total_death"> </p>
+                </div>
+
+                <div class="box">
+                    <h2>Total Recovery</h2>
+                    <p id="total_recovered"> </p>
+                </div>
+
+                <div class="box">
+                    <h2>New case</h2>
+                    <p id="new_case"> </p>
+                </div>
+
+                <div class="box">
+                    <h2>New Death</h2>
+                    <p id="new_death"> </p>
+                </div>
+                <div class="box">
+                    <h2>Total Countries Affected</h2>
+                    <p id="total_countries"></p>
+                </div>
+                <div class="box">
+                    <h2>Time Updated</h2>
+                    <p id="timing"></p>
+                </div>
+           </div> 
+
+
+
+            <div style="width: 1200px; height: 400px; margin: auto; " id="map"></div>
+    
+    
+    
+    
+           <table id="countries_stat">
+               <tr>
+                   <th>Country</th>
+                   <th>Cases</th>
+                   <th>Deaths</th>
+                   <th>  critical</th>
+                   <th>total recovered</th>
+               </tr>
+               <div style="padding: 15px;" id='searchBarContainer'>
+                <h2>Search Bar:</h2>
+                <input type='text' id='searchBar' onkeyup="searchFunction()" value="" title="countryName">
+            </div>
+
+           </table>
+           <div class="pagenumbers" id="pagination"></div>
+
+        </div>
+    </div>
+<script>
+    
+    //   // Initialize the platform object:
+    //   var platform = new H.service.Platform({
+    //     'apikey': '0xyIQHIvDMuEqXT98Q89intvtX2du739_4sn7I6CVio'
+    //   });
+
+    //   // Obtain the default map types from the platform object
+    //   var maptypes = platform.createDefaultLayers();
+
+    //   // Instantiate (and display) a map object:
+    //   var map = new H.Map(
+    //     document.getElementById('mapContainer'),
+    //     maptypes.vector.normal.map,
+    //     {
+    //       zoom: 10,
+    //       center: { lng: 103.851959, lat: 1.290270 }
+    //     });
+    
+
+// const mapbox_token="pk.eyJ1IjoiZXlrZjE5OTciLCJhIjoiY2twcDBzemF5MzRuMjJwcDNyOXIxMGNlcCJ9.yPOq4IrZ1I7Mdbffob6I6g";
+
+
+// mapboxgl.accessToken = mapbox_token;
+// var map = new mapboxgl.Map({
+//   container: "map",
+//   style: "mapbox://styles/mapbox/dark-v10",
+//   zoom: 1.5,
+//   center: [0, 20]
+// });
+function addMarkerToGroup(group, coordinate, html) {
+  var marker = new H.map.Marker(coordinate);
+  // add custom data to the marker
+  marker.setData(html);
+  group.addObject(marker);
+}
+
+function initializeMap(map){
+  map.setCenter({lat:1, lng:1});
+  map.setZoom(2);
+}
+function addInfoBubble(map,coordinate,tempData) {
+  var group = new H.map.Group();
+  map.addObject(group);
+
+  // add 'tap' event listener, that opens info bubble, to the group
+  group.addEventListener('tap', function (evt) {
+    // event target is the marker itself, group is a parent event target
+    // for all objects that it contains
+    var bubble = new H.ui.InfoBubble(evt.target.getGeometry(), {
+      // read custom data
+      content: evt.target.getData()
+    });
+    // show info bubble
+    console.log(tempData);
+    let alertString = "Country: " +tempData.country +'\nTotal Population: '+ tempData.population +'\nActive Cases: ' + tempData.active+'\nDeaths: ' + tempData.deaths;
+    alert(alertString);
+    ui.addBubble(bubble);
+  }, false);
+
+  addMarkerToGroup(group, coordinate,
+    '<div><a href="https://www.mcfc.co.uk">Manchester City</a></div>' +
+    '<div>City of Manchester Stadium<br />Capacity: 55,097</div>');
+
+
+}
+/**
+ * Boilerplate map initialization code starts below:
+ */
+
+//Step 1: initialize communication with the platform
+// In your own code, replace variable window.apikey with your own apikey
+var platform = new H.service.Platform({
+  apikey: 'Ja5jp1XAzeYNcfjRdaAxF6uZadn7dljAZb4SmoEPgtc'
+});
+var defaultLayers = platform.createDefaultLayers();
+
+//Step 2: initialize a map - this map is centered over Europe
+var map = new H.Map(document.getElementById('map'),
+  defaultLayers.vector.normal.map,{
+  center: {lat:50, lng:5},
+  zoom: 2,
+});
+// add a resize listener to make sure that the map occupies the whole container
+window.addEventListener('resize', () => map.getViewPort().resize());
+
+//Step 3: make the map interactive
+// MapEvents enables the event system
+// Behavior implements default interactions for pan/zoom (also on mobile touch environments)
+var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+
+// Create the default UI components
+var ui = H.ui.UI.createDefault(map, defaultLayers);
+
+// Now use the map as required...
+window.onload = function () {
+  initializeMap(map);
+
+}
+
+//Decalring the Different Variable and Objects
+let new_cases = document.getElementById("new_case");
+let new_death = document.getElementById("new_death");
+let total_death = document.getElementById("total_death");
+let total_recovered = document.getElementById("total_recovered");
+let total_cases = document.getElementById("total_cases");
+let table = document.getElementById('countries_stat');
+let countries_affected = document.getElementById('total_countries');
+let timing = document.getElementById('timing');
+
+
+
+
+const list_element = document.getElementById('countries_stat');
+const pagination_element = document.getElementById('pagination');
+
+let current_page = 1;
+let rows = 10;
+let noOfResults=0;
+var resultArray=[];
+// Fetching the Data from the server
+let total_deaths=0;
+//Fetching the World Data
+fetch("https://coronavirus-monitor.p.rapidapi.com/coronavirus/worldstat.php", {
+    "method": "GET",
+    "headers": {
+        "x-rapidapi-host": "coronavirus-monitor.p.rapidapi.com",
+        "x-rapidapi-key": "53009286a0mshdc8ec356f7aa205p1e0e80jsn5858f548ed53"
+    }
+}).then(response => response.json().then( data => {
+    total_death.innerText=data['total_deaths'];
+    total_recovered.innerText = data['total_recovered'];
+    new_cases.innerText = data['new_cases'];
+    new_death.innerText = data['new_deaths'];
+    
+
+})).catch(err => {
+    console.log(err);
+});
+
+
+
+
+
+
+
+//Fetching The Case by Country Data
+fetch("https://corona.lmao.ninja/v2/countries", {
+	"method": "GET",
+
+}).then(response => response.json().then( data => {
+    resultArray = data;
+
+    console.log(resultArray);
+
+    for (var i = 0; i < resultArray.length; i++) {
+        let tempData=resultArray[i];
+        
+        let lat = tempData.countryInfo.lat;
+        let long = tempData.countryInfo.long;
+        // var marker = new mapboxgl.Marker({
+        //     draggable: false
+        // })
+        // .setLngLat([long, lat]).addTo(map);
+        addInfoBubble(map,{lat:lat,lng:long},tempData);
+
+
+    }
+
+
+
+
+
+    DisplayList(resultArray, list_element, rows, current_page);
+
+
+
+    SetupPagination(resultArray, pagination_element, rows);
+
+
+})).catch(err => {
+    console.log(err);
+});
+
+
+
+fetch("https://coronavirus-monitor.p.rapidapi.com/coronavirus/affected.php", {
+	"method": "GET",
+	"headers": {
+		"x-rapidapi-key": "2ec3dc195fmsh6764d68994bddcap11837cjsnbaf79804358e",
+		"x-rapidapi-host": "coronavirus-monitor.p.rapidapi.com"
+	}
+}).then(response => response.json().then( data => {
+    countries_affected.innerHTML = data['affected_countries'].length;
+    timing.innerHTML = data['statistic_taken_at'];
+
+})).catch(err => {
+    console.log(err);
+});
+
+// function searchFunction() {
+//   // Declare variables
+//   var input, filter, table, tr, td, i, txtValue;
+//   input = document.getElementById("searchBar");
+//   filter = input.value.toUpperCase();
+//   table = document.getElementById("countries_stat");
+//   tr = table.getElementsByTagName("tr");
+
+//   // Loop through all table rows, and hide those who don't match the search query
+//   for (i = 0; i < tr.length; i++) {
+//     td = tr[i].getElementsByTagName("td")[0];
+//     if (td) {
+//       txtValue = td.textContent || td.innerText;
+//       if (txtValue.toUpperCase().indexOf(filter) > -1) {
+//         tr[i].style.display = "";
+//       } else {
+//         tr[i].style.display = "none";
+//       }
+//     }
+//   }
+// }
+
+
+function searchFunction(){
+
+    let table=document.getElementById('countries_stat');
+    let searchQuery=document.getElementById('searchBar');
+    let filter= searchQuery.value.toUpperCase();
+    let tr = table.getElementsByTagName("tr");
+    let pageNumbers= document.getElementById('pagination');
+    var buttons = pageNumbers.getElementsByTagName('button');
+
+    let tempArray=[];
+    for (var i = 0; i < resultArray.length; i++) {
+        let data=resultArray[i];
+        let country_name=data.country;
+        if(country_name.toUpperCase().indexOf(filter)>-1){
+
+            tempArray.push(data);
+
+
+
+        }
+
+
+
+    }
+
+    var firstPage = document.getElementById("1");
+    firstPage.click();
+    console.log(tempArray);
+    while (list_element.rows.length > 1) {
+        list_element.deleteRow(1);
+    }   
+    DisplayList(tempArray, list_element, rows, current_page);
+    
+    // for (i = 0; i < tr.length; i++) {
+    //     td = tr[i].getElementsByTagName("td")[0];
+    //     if (td) {
+    //     txtValue = td.textContent || td.innerText;
+    //     if (txtValue.toUpperCase().indexOf(filter) > -1) {
+    //         tr[i].style.display = "";
+    //     } else {
+    //         tr[i].style.display = "none";
+    //     }
+    //     }
+    // }
+
+}
+
+function DisplayList (items, wrapper, rows_per_page, page) {
+        page--;
+        if(items.length>=0){
+            let start = rows_per_page * page;
+            let end = start + rows_per_page;
+            let paginatedItems = items.slice(start, end);
+            for (let i = 0; i < paginatedItems.length; i++) {
+                let item = paginatedItems[i];
+                var row = table.insertRow(1);
+                var country = row.insertCell(0);
+                var cases = row.insertCell(1);
+                var deaths = row.insertCell(2);
+                var critical = row.insertCell(3);
+                var recovered = row.insertCell(4);
+                country.innerHTML = item.country;
+                cases.innerHTML = item.cases;
+                deaths.innerHTML = item.deaths;
+                critical.innerHTML = item.critical;
+                recovered.innerHTML = item.recovered;
+
+
+            }
+        }
+
+        // for (let i = 0; i < paginatedItems.length; i++) {
+        //     let item = paginatedItems[i];
+        //     let item_element = document.createElement('div');
+        //     item_element.classList.add('item');
+        //     item_element.innerText = item.country_name;
+            
+        //     wrapper.appendChild(item_element);
+	    // }
+
+}
+
+
+
+
+function SetupPagination (items, wrapper, rows_per_page) {
+
+        let page_count = Math.ceil(items.length / rows_per_page);
+        for (let i = 1; i < page_count + 1; i++) {
+            let btn = PaginationButton(i, items);
+            wrapper.appendChild(btn);
+        }
+    }
+
+
+
+    function PaginationButton (page, items) {
+        let button = document.createElement('button');
+        button.innerText = page;
+        button.setAttribute("id", page);
+
+        if (current_page == page) button.classList.add('active');
+
+        button.addEventListener('click', function () {
+            while (list_element.rows.length > 1) {
+                list_element.deleteRow(1);
+            }
+            current_page = page;
+            DisplayList(items, list_element, rows, current_page);
+
+            let current_btn = document.querySelector('.pagenumbers button.active');
+            current_btn.classList.remove('active');
+
+            button.classList.add('active');
+        });
+
+        return button;
+    }
+
+
+    
+
+
+</script>
+
+</body>
+</html>
+
+ 
